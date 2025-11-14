@@ -1,4 +1,3 @@
-# Workflow: cria branch, escreve index.htm e styles.css, faz commit/push e abre PR
 name: Convert index.htm to HTML5 and add styles.css
 
 on:
@@ -17,24 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Create branch
-        id: create_branch
-        run: |
-          BRANCH="convert/index-html5"
-          # If branch exists, checkout; otherwise create
-          if git ls-remote --heads origin "$BRANCH"; then
-            git checkout "$BRANCH"
-          else
-            git checkout -b "$BRANCH"
-          fi
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Write index.htm
+      - name: Write index.htm and styles.css
         run: |
           cat > index.htm <<'HTML_EOF'
 <!doctype html>
@@ -120,8 +102,6 @@ jobs:
 </html>
 HTML_EOF
 
-      - name: Write styles.css
-        run: |
           cat > styles.css <<'CSS_EOF'
 :root{
   --bg:#ffffff;
@@ -227,27 +207,14 @@ body{
 }
 CSS_EOF
 
-      - name: Show git status
-        run: git status --porcelain
-
-      - name: Add and commit files
-        run: |
-          git add index.htm styles.css
-          git commit -m "Convert index.htm to HTML5 and add styles.css (UTF-8)" || echo "No changes to commit"
-
-      - name: Push branch
-        env:
-          BRANCH: ${{ steps.create_branch.outputs.branch }}
-        run: |
-          git push --set-upstream origin HEAD
-
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Install gh CLI
-          sudo apt-get update && sudo apt-get install -y gh >/dev/null
-          echo "${GITHUB_TOKEN}" | gh auth login --with-token
-          gh pr create --title "Convert index.htm to HTML5 + add styles.css" \
-            --body "Converte index.htm (HTML gerado pelo Word) para HTML5, adiciona styles.css e define UTF-8. Mantém links para index_files/. Por favor valida as imagens e o encoding dos ficheiros em index_files." \
-            --base ${{ github.ref_name }} --head convert/index-html5 || echo "PR may already exist or failed"
+      - name: Create pull request with commit
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Convert index.htm to HTML5 and add styles.css (UTF-8)
+          title: Convert index.htm to HTML5 + add styles.css
+          body: |
+            Converte index.htm (HTML gerado pelo Word) para HTML5, adiciona styles.css e define UTF-8. Mantém links para index_files/. Por favor valida as imagens e o encoding dos ficheiros em index_files/.
+          base: ${{ github.event.repository.default_branch }}
+          branch: convert/index-html5
+          labels: automated
